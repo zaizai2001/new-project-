@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Acceso mediante QR</title>
+  <meta name="description" content="Pantalla protegida por contraseña, pensada para abrirse desde un QR." />
+  <style>
+    :root{
+      --bg:#0b0f14; --card:#111826; --muted:#9fb0c5; --ok:#16a34a; --err:#ef4444; --focus:#60a5fa;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0; font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Helvetica,Arial,sans-serif;
+      background: radial-gradient(1200px 800px at 70% -10%, #1f2a3a 0%, transparent 60%),
+                  radial-gradient(900px 600px at -10% 110%, #162031 0%, transparent 60%), var(--bg);
+      color:#e6eef8; display:grid; place-items:center; padding:24px;
+    }
+    .card{
+      width:100%; max-width:380px; background:linear-gradient(180deg,#141b29 0%,#0f1724 100%);
+      border:1px solid rgba(255,255,255,.08); border-radius:18px; box-shadow:0 10px 30px rgba(0,0,0,.35);
+      overflow:hidden; position:relative;
+    }
+    .card::before{
+      content:""; position:absolute; inset:0; pointer-events:none;
+      background:radial-gradient(600px 200px at 50% -40px, rgba(96,165,250,.2), transparent 60%);
+    }
+    header{padding:18px 20px; border-bottom:1px solid rgba(255,255,255,.06); display:flex; align-items:center; gap:10px}
+    header .dot{width:10px;height:10px;border-radius:999px;background:linear-gradient(145deg,#60a5fa,#22d3ee)}
+    header h1{font-size:18px; margin:0; letter-spacing:.2px}
+
+    .content{padding:22px}
+    .hint{font-size:13px; color:var(--muted); line-height:1.5; margin:0 0 14px}
+
+    .input{
+      background:#0b1320; border:1px solid rgba(255,255,255,.12); border-radius:12px; padding:10px 12px; display:flex; gap:10px; align-items:center
+    }
+    .input input{
+      flex:1; background:transparent; border:0; outline:none; color:#e6eef8; font-size:15px; letter-spacing:.6px
+    }
+    .input input::placeholder{color:#6b7f98}
+
+    .row{display:flex; gap:10px; margin-top:12px}
+    button{
+      flex:1; border:0; border-radius:12px; padding:12px 14px; cursor:pointer; font-weight:600; font-size:15px;
+      color:white; background:#1d2b44; transition:transform .06s ease, background .2s ease, box-shadow .2s ease;
+      box-shadow:0 8px 16px rgba(0,0,0,.25)
+    }
+    button.primary{background:#1b3b2a}
+    button:hover{transform:translateY(-1px)}
+    button:active{transform:translateY(0)}
+
+    .msg{margin-top:12px; font-size:14px; min-height:22px}
+    .msg.ok{color:var(--ok)}
+    .msg.err{color:var(--err)}
+
+    .result{display:none; text-align:center; padding:34px 24px}
+    .result h2{font-size:28px; margin:0 0 6px}
+    .result p{margin:0; color:var(--muted)}
+
+    .footer{padding:14px 20px; border-top:1px solid rgba(255,255,255,.06); font-size:12px; color:#88a0ba; display:flex; justify-content:space-between}
+    .kbd{font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; background:#0d1523; border:1px solid rgba(255,255,255,.12); padding:2px 6px; border-radius:6px}
+  </style>
+</head>
+<body>
+  <div class="card" id="card">
+    <header>
+      <div class="dot" aria-hidden="true"></div>
+      <h1>Acceso protegido</h1>
+    </header>
+
+    <div class="content" id="gate">
+      <p class="hint">Escanea el QR para llegar aquí. Ingresa la contraseña para ver el contenido.</p>
+      <div class="input">
+        <input id="password" type="password" inputmode="text" autocomplete="off" placeholder="Contraseña" aria-label="Contraseña" />
+      </div>
+      <div class="row">
+        <button class="primary" id="enterBtn">Entrar</button>
+        <button id="showBtn" type="button">Mostrar</button>
+      </div>
+      <div class="msg" id="message" aria-live="polite"></div>
+    </div>
+
+    <div class="result" id="result" role="region" aria-labelledby="title">
+      <h2 id="title">Xiaomi Global</h2>
+      <p>Acceso concedido ✔</p>
+    </div>
+
+    <div class="footer">
+      <span>Demo local</span>
+      <span><span class="kbd">Ctrl</span> + <span class="kbd">L</span> para copiar URL</span>
+    </div>
+  </div>
+
+  <script>
+    // ⚠️ Nota: esto es sólo ocultación en el lado del cliente. No uses esto para datos sensibles.
+    const SECRET = "8476"; // ← Cambia la contraseña aquí
+
+    const input = document.getElementById('password');
+    const msg = document.getElementById('message');
+    const result = document.getElementById('result');
+    const gate = document.getElementById('gate');
+    const enterBtn = document.getElementById('enterBtn');
+    const showBtn = document.getElementById('showBtn');
+
+    // Permite alternar visibilidad
+    showBtn.addEventListener('click', () => {
+      input.type = input.type === 'password' ? 'text' : 'password';
+      showBtn.textContent = input.type === 'password' ? 'Mostrar' : 'Ocultar';
+      input.focus();
+    });
+
+    function check(){
+      const ok = input.value.trim() === SECRET;
+      if(ok){
+        msg.textContent = '';
+        gate.style.display = 'none';
+        result.style.display = 'block';
+      } else {
+        msg.textContent = 'Contraseña incorrecta';
+        msg.className = 'msg err';
+        input.select();
+      }
+    }
+
+    enterBtn.addEventListener('click', check);
+    input.addEventListener('keydown', (e)=>{ if(e.key==='Enter') check(); });
+
+    // Si deseas pasar la contraseña por querystring para pruebas: ?pwd=1234
+    const params = new URLSearchParams(location.search);
+    const preset = params.get('pwd');
+    if(preset){ input.value = preset; }
+  </script>
+</body>
+</html>
